@@ -1,0 +1,5 @@
+node_modules
+npm-debug.log
+.sequelizerc
+src/database/migrations
+src/database/seeders

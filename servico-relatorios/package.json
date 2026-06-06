@@ -1,0 +1,20 @@
+{
+  "name": "servico-relatorios",
+  "version": "1.0.0",
+  "description": "Reporting service for EbookStore",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1",
+    "sequelize": "^6.37.3",
+    "mysql2": "^3.9.7",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
