@@ -1,20 +1,5 @@
 services:
-  app:
-    build: ./app
-    environment:
-      DB_HOST: mysql
-      DB_PORT: ${MYSQL_PORT}
-      DB_USER: ${MYSQL_USER}
-      DB_PASSWORD: ${MYSQL_PASSWORD}
-      DB_NAME: ${MYSQL_DATABASE}
-    depends_on:
-      mysql:
-        condition: service_healthy
-    expose:
-      - "3000"
-    restart: unless-stopped
-
-  mysql:
+  db:
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -22,7 +7,8 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
-      - ${MYSQL_DATA_PATH}:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+      - ./data/mysql:/var/lib/mysql
     ports:
       - "3306:3306"
     healthcheck:
@@ -32,6 +18,51 @@ services:
       retries: 5
     restart: unless-stopped
 
+  db-init:
+    build: ./api-principal
+    command: npm run db:init
+    environment:
+      NODE_ENV: production
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api-principal:
+    build: ./api-principal
+    environment:
+      NODE_ENV: production
+      API_PORT: 3000
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    expose:
+      - "3000"
+    restart: unless-stopped
+
+  servico-relatorios:
+    build: ./servico-relatorios
+    environment:
+      NODE_ENV: production
+      RELATORIOS_PORT: 3001
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      DB_USER_READ: ${DB_USER_READ}
+      DB_PASS_READ: ${DB_PASS_READ}
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "3001"
+    restart: unless-stopped
+
   nginx:
     image: nginx:alpine
     ports:
@@ -39,5 +70,6 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      - app
+      - api-principal
+      - servico-relatorios
     restart: unless-stopped
