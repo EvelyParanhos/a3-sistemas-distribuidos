@@ -27,11 +27,14 @@ class VendaService {
       await VendaRepository.updateStatus(id, 'confirmada', transaction);
       
       // Emitir evento passando clienteId e vendaId para gerar as "Propriedades" (Cópias Únicas)
-      eventEmitter.emit('venda.confirmada', { 
-        itens: venda.itens, 
-        transaction, 
-        clienteId: venda.clienteId, 
-        vendaId: venda.id 
+      // Precisa ser aguardado: o listener usa essa mesma transaction, então tem
+      // que terminar antes do commit (senão a query roda sobre uma transaction
+      // já finalizada e derruba o processo).
+      await eventEmitter.emitAsync('venda.confirmada', {
+        itens: venda.itens,
+        transaction,
+        clienteId: venda.clienteId,
+        vendaId: venda.id
       });
 
       await transaction.commit();
@@ -51,8 +54,8 @@ class VendaService {
 
       await VendaRepository.updateStatus(id, 'cancelada', transaction);
 
-      // Revoga as cópias únicas ao cancelar
-      eventEmitter.emit('venda.cancelada', { vendaId: venda.id, transaction });
+      // Revoga as cópias únicas ao cancelar (aguardado pelo mesmo motivo do confirm)
+      await eventEmitter.emitAsync('venda.cancelada', { vendaId: venda.id, transaction });
 
       await transaction.commit();
       return await VendaRepository.findById(id);
