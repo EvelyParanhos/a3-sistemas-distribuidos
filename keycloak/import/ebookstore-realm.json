@@ -1,0 +1,77 @@
+{
+  "realm": "ebookstore",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      {
+        "name": "vendas",
+        "description": "Acesso às operações da API Principal (clientes, vendedores, estoque, vendas)."
+      },
+      {
+        "name": "relatorios",
+        "description": "Acesso ao Serviço de Relatórios."
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "ebookstore-app",
+      "name": "EbookStore App (frontend / Postman)",
+      "description": "Client público usado para obter tokens (Authorization Code no navegador e Password Grant para testes via Postman/curl).",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "protocolMappers": [
+        {
+          "name": "ebookstore-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "ebookstore-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "gerente",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "gerente@ebookstore.local",
+      "firstName": "Geralda",
+      "lastName": "Gerente",
+      "credentials": [
+        { "type": "password", "value": "gerente123", "temporary": false }
+      ],
+      "realmRoles": ["vendas", "relatorios"]
+    },
+    {
+      "username": "vendedor",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "vendedor@ebookstore.local",
+      "firstName": "Valdir",
+      "lastName": "Vendedor",
+      "credentials": [
+        { "type": "password", "value": "vendedor123", "temporary": false }
+      ],
+      "realmRoles": ["vendas"]
+    }
+  ]
+}
