@@ -75,6 +75,29 @@ A coleção `postman_collection.json` já vem configurada:
 2. As demais requisições usam esse token como Bearer (herdado no nível da coleção).
 3. Para demonstrar o RBAC: faça login como `vendedor` e chame um relatório — retorna `403`.
 
+## Testes automatizados
+
+Cada aplicação tem testes de integração HTTP (Jest + Supertest) que exercitam a cadeia real
+de autenticação/autorização (express-jwt + jwks-rsa). Um servidor JWKS local assina tokens RS256
+de teste, então **não é preciso Keycloak nem banco** para rodá-los (a camada de serviço é mockada).
+
+Cobertura: rota pública `/health`, ausência de token (401), token mal formado/expirado/`iss`/`aud`
+inválidos (401), role ausente (403), acesso autorizado (200), validação de payload (Joi, 400) e
+mapeamento de erros dos controllers (404/422/500).
+
+```bash
+# api-principal
+docker run --rm -v "$PWD/api-principal":/usr/src/app -v /usr/src/app/node_modules \
+  -w /usr/src/app node:20-alpine sh -c "npm install && npm test"
+
+# servico-relatorios
+docker run --rm -v "$PWD/servico-relatorios":/usr/src/app -v /usr/src/app/node_modules \
+  -w /usr/src/app node:20-alpine sh -c "npm install && npm test"
+```
+
+> Localmente (fora do Docker) basta `npm install && npm test` em cada pasta. O volume anônimo
+> `-v /usr/src/app/node_modules` é só para isolar as dependências do host neste projeto.
+
 ## Notas de arquitetura
 
 - **Issuer vs. JWKS:** os tokens são emitidos com `iss = http://localhost:8080/...` (como o cliente

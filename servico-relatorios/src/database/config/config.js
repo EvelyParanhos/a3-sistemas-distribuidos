@@ -9,6 +9,14 @@ module.exports = {
     dialect: 'mysql',
     logging: false
   },
+  test: {
+    username: process.env.DB_USER_READ || 'relatorio_user',
+    password: process.env.DB_PASS_READ || 'relatorio_pass',
+    database: 'ebookstore_test_db',
+    host: 'db',
+    dialect: 'mysql',
+    logging: false
+  },
   production: {
     username: process.env.DB_USER_READ,
     password: process.env.DB_PASS_READ,
