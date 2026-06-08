@@ -1,0 +1,587 @@
+{
+  "info": {
+    "name": "EbookStore API",
+    "description": "Coleção Postman para o sistema distribuído EbookStore: API Principal (clientes, vendedores, estoque, vendas) e Serviço de Relatórios. As requisições usam {{base_url}}, que aponta para o nginx (porta 80) que roteia '/api/relatorios' para o serviço de relatórios e o restante para a API principal.\n\nAs requisições 'Criar cliente', 'Criar vendedor', 'Cadastrar produto' e 'Criar venda' geram dados únicos (CPF/e-mail) e gravam o ID retornado nas variáveis de coleção (clienteId, vendedorId, produtoId, vendaId), que são reaproveitadas pelas demais requisições. Atenção: 'Remover cliente'/'Remover vendedor' apagam o registro definitivamente (sem soft-delete) — rode a pasta 'Vendas' antes de remover o cliente/vendedor/produto usados nela, ou crie registros extras para testar a remoção.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost",
+      "description": "Gateway nginx. Use http://localhost:3000 para falar diretamente com a API Principal ou http://localhost:3001 para o Serviço de Relatórios."
+    },
+    {
+      "key": "keycloak_url",
+      "value": "http://localhost:8080",
+      "description": "Endereço do Keycloak (emissor dos tokens)."
+    },
+    { "key": "realm", "value": "ebookstore" },
+    { "key": "client_id", "value": "ebookstore-app" },
+    {
+      "key": "access_token",
+      "value": "",
+      "description": "Preenchido automaticamente pelas requisições da pasta 'Autenticação (Keycloak)'."
+    },
+    { "key": "clienteId", "value": "1" },
+    { "key": "vendedorId", "value": "1" },
+    { "key": "produtoId", "value": "1" },
+    { "key": "vendaId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Autenticação (Keycloak)",
+      "description": "Obtém um access token no Keycloak (Resource Owner Password Grant) e o grava na variável {{access_token}}, usada automaticamente como Bearer pelas demais requisições. Rode 'Login - gerente' para ter acesso a tudo, ou 'Login - vendedor' para testar o bloqueio (403) nos Relatórios.",
+      "item": [
+        {
+          "name": "Login - gerente (vendas + relatorios)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.collectionVariables.set('access_token', pm.response.json().access_token);",
+                  "}",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id", "value": "{{client_id}}" },
+                { "key": "username", "value": "gerente" },
+                { "key": "password", "value": "gerente123" }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_url}}/realms/{{realm}}/protocol/openid-connect/token",
+              "host": ["{{keycloak_url}}"],
+              "path": ["realms", "{{realm}}", "protocol", "openid-connect", "token"]
+            }
+          }
+        },
+        {
+          "name": "Login - vendedor (apenas vendas)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.collectionVariables.set('access_token', pm.response.json().access_token);",
+                  "}",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id", "value": "{{client_id}}" },
+                { "key": "username", "value": "vendedor" },
+                { "key": "password", "value": "vendedor123" }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_url}}/realms/{{realm}}/protocol/openid-connect/token",
+              "host": ["{{keycloak_url}}"],
+              "path": ["realms", "{{realm}}", "protocol", "openid-connect", "token"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Clientes",
+      "item": [
+        {
+          "name": "Criar cliente",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let cpf = '';",
+                  "for (let i = 0; i < 11; i++) cpf += Math.floor(Math.random() * 10);",
+                  "pm.collectionVariables.set('randomCpf', cpf);",
+                  "pm.collectionVariables.set('randomEmail', `cliente.${Date.now()}@email.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('clienteId', pm.response.json().id);",
+                  "}",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"João Silva\",\n  \"email\": \"{{randomEmail}}\",\n  \"cpf\": \"{{randomCpf}}\",\n  \"telefone\": \"11999999999\",\n  \"endereco\": \"Rua A, 123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/clientes",
+              "host": ["{{base_url}}"],
+              "path": ["clientes"]
+            }
+          }
+        },
+        {
+          "name": "Listar clientes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/clientes",
+              "host": ["{{base_url}}"],
+              "path": ["clientes"]
+            }
+          }
+        },
+        {
+          "name": "Buscar cliente por ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/clientes/{{clienteId}}",
+              "host": ["{{base_url}}"],
+              "path": ["clientes", "{{clienteId}}"]
+            }
+          }
+        },
+        {
+          "name": "Atualizar cliente",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let cpf = '';",
+                  "for (let i = 0; i < 11; i++) cpf += Math.floor(Math.random() * 10);",
+                  "pm.collectionVariables.set('randomCpf', cpf);",
+                  "pm.collectionVariables.set('randomEmail', `cliente.upd.${Date.now()}@email.com`);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"João Silva\",\n  \"email\": \"{{randomEmail}}\",\n  \"cpf\": \"{{randomCpf}}\",\n  \"telefone\": \"11999999999\",\n  \"endereco\": \"Rua A, 123 - atualizado\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/clientes/{{clienteId}}",
+              "host": ["{{base_url}}"],
+              "path": ["clientes", "{{clienteId}}"]
+            }
+          }
+        },
+        {
+          "name": "Remover cliente",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function randomDigits(n) { let s = ''; for (let i = 0; i < n; i++) s += Math.floor(Math.random() * 10); return s; }",
+                  "const baseUrl = pm.collectionVariables.get('base_url');",
+                  "pm.sendRequest({",
+                  "  url: `${baseUrl}/clientes`,",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({",
+                  "    nome: 'Cliente descartável',",
+                  "    email: `cliente.delete.${Date.now()}@email.com`,",
+                  "    cpf: randomDigits(11),",
+                  "    telefone: '11999999999'",
+                  "  }) }",
+                  "}, (err, res) => {",
+                  "  if (!err && res.code === 201) pm.collectionVariables.set('clienteIdToDelete', res.json().id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/clientes/{{clienteIdToDelete}}",
+              "host": ["{{base_url}}"],
+              "path": ["clientes", "{{clienteIdToDelete}}"]
+            },
+            "description": "Cria um cliente descartável no pré-script e o remove em seguida — assim a remoção não afeta o {{clienteId}} usado pela pasta 'Vendas'."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vendedores",
+      "item": [
+        {
+          "name": "Criar vendedor",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let cpf = '';",
+                  "for (let i = 0; i < 11; i++) cpf += Math.floor(Math.random() * 10);",
+                  "pm.collectionVariables.set('randomCpf', cpf);",
+                  "pm.collectionVariables.set('randomEmail', `vendedor.${Date.now()}@email.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('vendedorId', pm.response.json().id);",
+                  "}",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Carlos Pereira\",\n  \"email\": \"{{randomEmail}}\",\n  \"cpf\": \"{{randomCpf}}\",\n  \"telefone\": \"11999990000\",\n  \"comissaoPercentual\": 5\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/vendedores",
+              "host": ["{{base_url}}"],
+              "path": ["vendedores"]
+            }
+          }
+        },
+        {
+          "name": "Listar vendedores",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/vendedores",
+              "host": ["{{base_url}}"],
+              "path": ["vendedores"]
+            }
+          }
+        },
+        {
+          "name": "Buscar vendedor por ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/vendedores/{{vendedorId}}",
+              "host": ["{{base_url}}"],
+              "path": ["vendedores", "{{vendedorId}}"]
+            }
+          }
+        },
+        {
+          "name": "Atualizar vendedor",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let cpf = '';",
+                  "for (let i = 0; i < 11; i++) cpf += Math.floor(Math.random() * 10);",
+                  "pm.collectionVariables.set('randomCpf', cpf);",
+                  "pm.collectionVariables.set('randomEmail', `vendedor.upd.${Date.now()}@email.com`);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Carlos Pereira\",\n  \"email\": \"{{randomEmail}}\",\n  \"cpf\": \"{{randomCpf}}\",\n  \"telefone\": \"11999990000\",\n  \"comissaoPercentual\": 7.5\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/vendedores/{{vendedorId}}",
+              "host": ["{{base_url}}"],
+              "path": ["vendedores", "{{vendedorId}}"]
+            }
+          }
+        },
+        {
+          "name": "Remover vendedor",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function randomDigits(n) { let s = ''; for (let i = 0; i < n; i++) s += Math.floor(Math.random() * 10); return s; }",
+                  "const baseUrl = pm.collectionVariables.get('base_url');",
+                  "pm.sendRequest({",
+                  "  url: `${baseUrl}/vendedores`,",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({",
+                  "    nome: 'Vendedor descartável',",
+                  "    email: `vendedor.delete.${Date.now()}@email.com`,",
+                  "    cpf: randomDigits(11),",
+                  "    telefone: '11999990000'",
+                  "  }) }",
+                  "}, (err, res) => {",
+                  "  if (!err && res.code === 201) pm.collectionVariables.set('vendedorIdToDelete', res.json().id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/vendedores/{{vendedorIdToDelete}}",
+              "host": ["{{base_url}}"],
+              "path": ["vendedores", "{{vendedorIdToDelete}}"]
+            },
+            "description": "Cria um vendedor descartável no pré-script e o remove em seguida — assim a remoção não afeta o {{vendedorId}} usado pela pasta 'Vendas'."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Estoque",
+      "item": [
+        {
+          "name": "Listar produtos em estoque",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/estoque",
+              "host": ["{{base_url}}"],
+              "path": ["estoque"]
+            }
+          }
+        },
+        {
+          "name": "Cadastrar produto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('produtoId', pm.response.json().id);",
+                  "}",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Dom Casmurro\",\n  \"autor\": \"Machado de Assis\",\n  \"genero\": \"Romance\",\n  \"descricao\": \"Clássico da literatura brasileira\",\n  \"preco\": 39.9,\n  \"quantidadeEstoque\": 50,\n  \"estoqueMinimo\": 5\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/estoque",
+              "host": ["{{base_url}}"],
+              "path": ["estoque"]
+            }
+          }
+        },
+        {
+          "name": "Atualizar produto",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Dom Casmurro\",\n  \"autor\": \"Machado de Assis\",\n  \"genero\": \"Romance\",\n  \"descricao\": \"Clássico da literatura brasileira - edição revisada\",\n  \"preco\": 44.9,\n  \"quantidadeEstoque\": 60,\n  \"estoqueMinimo\": 10\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/estoque/{{produtoId}}",
+              "host": ["{{base_url}}"],
+              "path": ["estoque", "{{produtoId}}"]
+            }
+          }
+        },
+        {
+          "name": "Remover produto",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/estoque/{{produtoId}}",
+              "host": ["{{base_url}}"],
+              "path": ["estoque", "{{produtoId}}"]
+            }
+          }
+        },
+        {
+          "name": "Reativar produto",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{base_url}}/estoque/{{produtoId}}/reativar",
+              "host": ["{{base_url}}"],
+              "path": ["estoque", "{{produtoId}}", "reativar"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vendas",
+      "item": [
+        {
+          "name": "Criar venda",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('vendaId', pm.response.json().id);",
+                  "}",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": {{clienteId}},\n  \"vendedorId\": {{vendedorId}},\n  \"itens\": [\n    {\n      \"produtoId\": {{produtoId}},\n      \"quantidade\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/vendas",
+              "host": ["{{base_url}}"],
+              "path": ["vendas"]
+            }
+          }
+        },
+        {
+          "name": "Listar vendas",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/vendas",
+              "host": ["{{base_url}}"],
+              "path": ["vendas"]
+            }
+          }
+        },
+        {
+          "name": "Confirmar venda",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{base_url}}/vendas/{{vendaId}}/confirmar",
+              "host": ["{{base_url}}"],
+              "path": ["vendas", "{{vendaId}}", "confirmar"]
+            }
+          }
+        },
+        {
+          "name": "Cancelar venda",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{base_url}}/vendas/{{vendaId}}/cancelar",
+              "host": ["{{base_url}}"],
+              "path": ["vendas", "{{vendaId}}", "cancelar"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Relatórios",
+      "item": [
+        {
+          "name": "Mais vendidos",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/relatorios/mais-vendidos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "relatorios", "mais-vendidos"]
+            }
+          }
+        },
+        {
+          "name": "Baixo estoque",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/relatorios/baixo-estoque",
+              "host": ["{{base_url}}"],
+              "path": ["api", "relatorios", "baixo-estoque"]
+            }
+          }
+        },
+        {
+          "name": "Relatório por cliente",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/relatorios/cliente/{{clienteId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "relatorios", "cliente", "{{clienteId}}"]
+            }
+          }
+        },
+        {
+          "name": "Consumo médio",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/relatorios/consumo-medio",
+              "host": ["{{base_url}}"],
+              "path": ["api", "relatorios", "consumo-medio"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
