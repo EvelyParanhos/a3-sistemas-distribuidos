@@ -32,13 +32,6 @@ describe('Relatórios (servico-relatorios)', () => {
     expect(res.body[0]).toMatchObject({ titulo: 'Dom Casmurro' });
   });
 
-  test('GET /baixo-estoque → 200', async () => {
-    mockGenerate.mockResolvedValue([]);
-    const res = await auth(request(app).get('/api/relatorios/baixo-estoque'));
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual([]);
-  });
-
   test('GET /cliente/:id → 200', async () => {
     mockGenerate.mockResolvedValue([{ titulo: 'X', numeroSerie: 'abc-123' }]);
     const res = await auth(request(app).get('/api/relatorios/cliente/1'));

@@ -29,24 +29,10 @@ module.exports = {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false
       },
-      quantidadeEstoque: {
-        type: Sequelize.INTEGER,
-        allowNull: false,
-        defaultValue: 0
-      },
-      estoqueMinimo: {
-        type: Sequelize.INTEGER,
-        allowNull: false,
-        defaultValue: 5
-      },
-      ativo: {
+      emCatalogo: {
         type: Sequelize.BOOLEAN,
         allowNull: false,
         defaultValue: true
-      },
-      deletedAt: {
-        type: Sequelize.DATE,
-        allowNull: true
       },
       createdAt: {
         allowNull: false,

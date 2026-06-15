@@ -1,13 +1,13 @@
 const Produto = require('../models/Produto');
-const { Op } = require('sequelize');
+const ItemVenda = require('../models/ItemVenda');
 
 class ProdutoRepository {
   static async create(data) {
     return Produto.create(data);
   }
 
-  static async findAll(includeInactive = false) {
-    const where = includeInactive ? {} : { ativo: true };
+  static async findAll(incluirForaCatalogo = false) {
+    const where = incluirForaCatalogo ? {} : { emCatalogo: true };
     return Produto.findAll({ where });
   }
 
@@ -21,20 +21,31 @@ class ProdutoRepository {
     return produto.update(data);
   }
 
-  static async softDelete(id) {
+  // Tira o produto do catálogo sem excluí-lo: ele deixa de ser vendável, mas o
+  // registro (e as vendas/propriedades que o referenciam) permanece intacto.
+  static async removerDoCatalogo(id) {
     const produto = await Produto.findByPk(id);
     if (!produto) throw new Error('Produto não encontrado');
-    produto.ativo = false;
-    await produto.save();
-    return produto.destroy(); // Sequelize paranoid will set deletedAt
+    produto.emCatalogo = false;
+    return produto.save();
   }
 
-  static async restore(id) {
-    const produto = await Produto.findByPk(id, { paranoid: false });
+  static async reincluirNoCatalogo(id) {
+    const produto = await Produto.findByPk(id);
     if (!produto) throw new Error('Produto não encontrado');
-    produto.ativo = true;
-    await produto.save();
-    return produto.restore();
+    produto.emCatalogo = true;
+    return produto.save();
+  }
+
+  static async contarVendas(id) {
+    return ItemVenda.count({ where: { produtoId: id } });
+  }
+
+  // Exclusão permanente: só permitida quando não há venda associada ao produto.
+  static async delete(id) {
+    const produto = await Produto.findByPk(id);
+    if (!produto) throw new Error('Produto não encontrado');
+    return produto.destroy();
   }
 }
 

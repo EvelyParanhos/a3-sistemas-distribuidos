@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "EbookStore API",
-    "description": "Coleção Postman para o sistema distribuído EbookStore: API Principal (clientes, vendedores, estoque, vendas) e Serviço de Relatórios. As requisições usam {{base_url}}, que aponta para o nginx (porta 80) que roteia '/api/relatorios' para o serviço de relatórios e o restante para a API principal.\n\nAs requisições 'Criar cliente', 'Criar vendedor', 'Cadastrar produto' e 'Criar venda' geram dados únicos (CPF/e-mail) e gravam o ID retornado nas variáveis de coleção (clienteId, vendedorId, produtoId, vendaId), que são reaproveitadas pelas demais requisições. Atenção: 'Remover cliente'/'Remover vendedor' apagam o registro definitivamente (sem soft-delete) — rode a pasta 'Vendas' antes de remover o cliente/vendedor/produto usados nela, ou crie registros extras para testar a remoção.",
+    "description": "Coleção Postman para o sistema distribuído EbookStore: API Principal (clientes, vendedores, catálogo, vendas) e Serviço de Relatórios. As requisições usam {{base_url}}, que aponta para o nginx (porta 80) que roteia '/api/relatorios' para o serviço de relatórios e o restante para a API principal.\n\nAs requisições 'Criar cliente', 'Criar vendedor', 'Cadastrar produto' e 'Criar venda' geram dados únicos (CPF/e-mail) e gravam o ID retornado nas variáveis de coleção (clienteId, vendedorId, produtoId, vendaId), que são reaproveitadas pelas demais requisições. Atenção: 'Remover cliente'/'Remover vendedor' apagam o registro definitivamente (sem soft-delete) — rode a pasta 'Vendas' antes de remover o cliente/vendedor/produto usados nela, ou crie registros extras para testar a remoção.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -383,16 +383,16 @@
       ]
     },
     {
-      "name": "Estoque",
+      "name": "Catálogo",
       "item": [
         {
-          "name": "Listar produtos em estoque",
+          "name": "Listar catálogo",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{base_url}}/estoque",
+              "raw": "{{base_url}}/catalogo",
               "host": ["{{base_url}}"],
-              "path": ["estoque"]
+              "path": ["catalogo"]
             }
           }
         },
@@ -417,12 +417,12 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"titulo\": \"Dom Casmurro\",\n  \"autor\": \"Machado de Assis\",\n  \"genero\": \"Romance\",\n  \"descricao\": \"Clássico da literatura brasileira\",\n  \"preco\": 39.9,\n  \"quantidadeEstoque\": 50,\n  \"estoqueMinimo\": 5\n}"
+              "raw": "{\n  \"titulo\": \"Dom Casmurro\",\n  \"autor\": \"Machado de Assis\",\n  \"genero\": \"Romance\",\n  \"descricao\": \"Clássico da literatura brasileira\",\n  \"preco\": 39.9\n}"
             },
             "url": {
-              "raw": "{{base_url}}/estoque",
+              "raw": "{{base_url}}/catalogo",
               "host": ["{{base_url}}"],
-              "path": ["estoque"]
+              "path": ["catalogo"]
             }
           }
         },
@@ -433,34 +433,45 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"titulo\": \"Dom Casmurro\",\n  \"autor\": \"Machado de Assis\",\n  \"genero\": \"Romance\",\n  \"descricao\": \"Clássico da literatura brasileira - edição revisada\",\n  \"preco\": 44.9,\n  \"quantidadeEstoque\": 60,\n  \"estoqueMinimo\": 10\n}"
+              "raw": "{\n  \"titulo\": \"Dom Casmurro\",\n  \"autor\": \"Machado de Assis\",\n  \"genero\": \"Romance\",\n  \"descricao\": \"Clássico da literatura brasileira - edição revisada\",\n  \"preco\": 44.9\n}"
             },
             "url": {
-              "raw": "{{base_url}}/estoque/{{produtoId}}",
+              "raw": "{{base_url}}/catalogo/{{produtoId}}",
               "host": ["{{base_url}}"],
-              "path": ["estoque", "{{produtoId}}"]
+              "path": ["catalogo", "{{produtoId}}"]
             }
           }
         },
         {
-          "name": "Remover produto",
+          "name": "Excluir produto (definitivo, bloqueado se houver venda)",
           "request": {
             "method": "DELETE",
             "url": {
-              "raw": "{{base_url}}/estoque/{{produtoId}}",
+              "raw": "{{base_url}}/catalogo/{{produtoId}}",
               "host": ["{{base_url}}"],
-              "path": ["estoque", "{{produtoId}}"]
+              "path": ["catalogo", "{{produtoId}}"]
             }
           }
         },
         {
-          "name": "Reativar produto",
+          "name": "Tirar do catálogo (sem excluir)",
           "request": {
             "method": "PATCH",
             "url": {
-              "raw": "{{base_url}}/estoque/{{produtoId}}/reativar",
+              "raw": "{{base_url}}/catalogo/{{produtoId}}/remover-catalogo",
               "host": ["{{base_url}}"],
-              "path": ["estoque", "{{produtoId}}", "reativar"]
+              "path": ["catalogo", "{{produtoId}}", "remover-catalogo"]
+            }
+          }
+        },
+        {
+          "name": "Reincluir no catálogo",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{base_url}}/catalogo/{{produtoId}}/reativar",
+              "host": ["{{base_url}}"],
+              "path": ["catalogo", "{{produtoId}}", "reativar"]
             }
           }
         }
@@ -518,7 +529,8 @@
               "raw": "{{base_url}}/vendas/{{vendaId}}/confirmar",
               "host": ["{{base_url}}"],
               "path": ["vendas", "{{vendaId}}", "confirmar"]
-            }
+            },
+            "description": "Gera as cópias únicas (chaves/números de série) de cada ebook comprado e, após a confirmação, dispara o envio SIMULADO das chaves por e-mail ao cliente. Não há SMTP real: o 'e-mail' é registrado nos logs do container api-principal (procure por 'E-MAIL (SIMULADO)')."
           }
         },
         {
@@ -545,17 +557,6 @@
               "raw": "{{base_url}}/api/relatorios/mais-vendidos",
               "host": ["{{base_url}}"],
               "path": ["api", "relatorios", "mais-vendidos"]
-            }
-          }
-        },
-        {
-          "name": "Baixo estoque",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/api/relatorios/baixo-estoque",
-              "host": ["{{base_url}}"],
-              "path": ["api", "relatorios", "baixo-estoque"]
             }
           }
         },

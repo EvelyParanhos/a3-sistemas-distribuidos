@@ -19,24 +19,14 @@ const Produto = sequelize.define('Produto', {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false
   },
-  quantidadeEstoque: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    defaultValue: 0
-  },
-  estoqueMinimo: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    defaultValue: 5
-  },
-  ativo: {
+  // Ebook digital: não há estoque. O produto apenas está (ou não) disponível no catálogo.
+  emCatalogo: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: true
   }
 }, {
-  tableName: 'produtos',
-  paranoid: true
+  tableName: 'produtos'
 });
 
 module.exports = Produto;

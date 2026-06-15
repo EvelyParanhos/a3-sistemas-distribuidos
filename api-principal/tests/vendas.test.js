@@ -48,8 +48,8 @@ describe('Vendas (api-principal)', () => {
     expect(res.body).toHaveLength(1);
   });
 
-  test('PATCH /vendas/:id/confirmar com estoque insuficiente → 422', async () => {
-    VendaService.confirm.mockRejectedValue(new Error('Estoque insuficiente para o produto X'));
+  test('PATCH /vendas/:id/confirmar com ebook fora do catálogo → 422', async () => {
+    VendaService.confirm.mockRejectedValue(new Error('O ebook "X" não está mais disponível para venda.'));
     const res = await auth(request(app).patch('/vendas/10/confirmar'));
     expect(res.status).toBe(422);
   });

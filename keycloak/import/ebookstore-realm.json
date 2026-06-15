@@ -12,7 +12,7 @@
     "realm": [
       {
         "name": "vendas",
-        "description": "Acesso às operações da API Principal (clientes, vendedores, estoque, vendas)."
+        "description": "Acesso às operações da API Principal (clientes, vendedores, catálogo, vendas)."
       },
       {
         "name": "relatorios",

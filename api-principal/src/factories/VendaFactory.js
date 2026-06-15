@@ -11,8 +11,8 @@ class VendaFactory {
 
     for (const item of itens) {
       const produto = await Produto.findByPk(item.produtoId);
-      if (!produto || !produto.ativo) {
-        throw new Error(`Produto ${item.produtoId} não encontrado ou inativo`);
+      if (!produto || !produto.emCatalogo) {
+        throw new Error(`Produto ${item.produtoId} não encontrado ou fora do catálogo`);
       }
 
       const subtotal = Number(produto.preco) * item.quantidade;

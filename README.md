@@ -26,7 +26,7 @@ A autorização é **baseada em roles de realm**, por serviço:
 
 | Serviço               | Rotas protegidas       | Role exigida  |
 | --------------------- | ---------------------- | ------------- |
-| API Principal         | `/clientes`, `/vendedores`, `/estoque`, `/vendas` | `vendas`     |
+| API Principal         | `/clientes`, `/vendedores`, `/catalogo`, `/vendas` | `vendas`     |
 | Serviço de Relatórios | `/api/relatorios/*`    | `relatorios`  |
 
 > `GET /health` em cada serviço é público (sem token).

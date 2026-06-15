@@ -38,11 +38,16 @@ class VendaService {
       });
 
       await transaction.commit();
-      return await VendaRepository.findById(id);
     } catch (error) {
       await transaction.rollback();
       throw error;
     }
+
+    // Pós-commit (fora da transação): entrega das chaves por e-mail (simulada).
+    // Só notificamos o cliente depois que a venda foi efetivamente persistida.
+    await eventEmitter.emitAsync('venda.entregue', { vendaId: id });
+
+    return VendaRepository.findById(id);
   }
 
   static async cancel(id) {

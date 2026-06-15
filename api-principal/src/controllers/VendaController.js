@@ -15,7 +15,8 @@ class VendaController {
       const venda = await VendaService.confirm(req.params.id);
       res.status(200).json(venda);
     } catch (error) {
-      if (error.message.includes('Estoque insuficiente')) {
+      // Ebook fora do catálogo no momento da confirmação → não processável.
+      if (error.message.includes('não está mais disponível')) {
         error.statusCode = 422;
       }
       next(error);
